@@ -1,0 +1,12 @@
+*~
+*.swp
+*.dat
+*.count
+*.db
+*.bk
+*.pyc
+*.rg
+*.wav
+rightPanel.html
+leftPanel.html
+gitignore/*
