@@ -1,17 +1,5 @@
 /**
- * Humphrey The Rabbit - In glorious WebGL Form
- *
- * tl;dr A game where you play as a Rabbit who must avoid Foxes and Boxes. 
- *
- * History that is only of significance to the author:
- * Humphrey The Rabbit was originally written using pygame (Python 2.7) in 2012 whilst attempting to improve my Python after years of trying to ignore its existance.
- * Now I am attempting to improve my JavaScript after years of trying to ignore its existance, so its time to reinvent some wheels and rewrite Humphrey The Rabbit.
- * One day it'll probably get rewritten in C++ where it belongs.
- * 
- * Credits:
- * Sprites are from Biots.
- *
- * Sam Moore, 2014
+ * See game.js for boring details of what this is
  */
 
 /** The canvas **/
