@@ -406,13 +406,10 @@ function main()
 	canvas.addEventListener('mousedown', function(event) {
 		var rect = canvas.getBoundingClientRect();
 		var target = LocationPixToGL(event.clientX - rect.left, event.clientY - rect.top);
-		gPlayer.AddShot(target, "data/player/shot.bmp");		
+		gPlayer.AddShot(target, "data/player_shot.gif");		
 	});
 
-	LoadTexture("data/player/shot.bmp");
-	LoadTexture("data/player/player.bmp");
-	
-	setTimeout(StartGame, 3000);
+	StartGame();
 }
 
 Entity.prototype.AddShot = function(target, sprite)
@@ -425,6 +422,9 @@ Entity.prototype.AddShot = function(target, sprite)
 	}
 	this.ignoreCollisionsEntity[shot] = true;
 	shot.frame = LoadTexture(sprite);
+	shot.scale = [shot.frame.img.width/canvas.width, shot.frame.img.height/canvas.height];
+	
+
 	var dist = 0;
 	shot.speed = 0.7;
 	for (var i = 0; i < 2; ++i)
@@ -445,7 +445,7 @@ Entity.prototype.AddShot = function(target, sprite)
 function StartGame()
 {
 	gPlayer = new Entity([0,0],[0,0]);
-	gPlayer.frame = LoadTexture("data/player/player.bmp");
+	gPlayer.frame = LoadTexture("data/player.gif");
 	gPlayer.speed = 0.4;
 	gPlayer.Step = function()
 	{
