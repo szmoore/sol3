@@ -3,7 +3,7 @@
  */
 
 /** The canvas **/
-var canvas;
+var gCanvas;
 /** gl context **/
 var gl;
 	
@@ -87,15 +87,15 @@ function SpriteCollision(offset, sprite1, sprite2)
 
 function LocationGLToPix(x, y)
 {
-	var xx = Math.round((1+x)*canvas.width/2);
-	var yy = Math.round((1-y)*canvas.height/2);
+	var xx = Math.round((1+x)*gCanvas.width/2);
+	var yy = Math.round((1-y)*gCanvas.height/2);
 	return [xx,yy];
 }
 
 function LocationPixToGL(x, y)
 {
-	var xx = 2*(0.5 - x/canvas.width);
-	var yy = 2*(0.5 - y/canvas.width);
+	var xx = 2*(0.5 - x/gCanvas.width);
+	var yy = 2*(0.5 - y/gCanvas.width);
 	return [xx,yy];
 }
 
@@ -108,7 +108,7 @@ function InitWebGL()
 	gl = null;
 	try
 	{
-	    gl = canvas.getContext("experimental-webgl");
+	    gl = gCanvas.getContext("experimental-webgl");
 	}
 	catch(e) {}
   
@@ -260,8 +260,8 @@ function InitShaders()
 	uRotation = gl.getUniformLocation(shaderProgram, "uRotation");
 	gl.uniform4f(uColour, 1,1,1,1);
 	// Set it
-	//gl.uniform1f(uAspectRatio, canvas.width/canvas.height);
-	gl.uniform1f(uAspectRatio, 1);
+	gl.uniform1f(uAspectRatio, gCanvas.width/gCanvas.height);
+	//gl.uniform1f(uAspectRatio, 1);
 }
 
 //

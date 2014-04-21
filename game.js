@@ -26,11 +26,16 @@ var gMouse = [0,0];
 /**
  * Game Entity
  */
-function Entity(position, velocity)
+function Entity(position, velocity, frame)
 {
 	this.position = position;
 	this.velocity = velocity;
 	this.lastPosition = []; for (var i in this.position) this.lastPosition[i] = this.position[i];
+	this.frame = LoadTexture(frame);
+	if (this.frame)
+	{
+		this.scale = [this.frame.img.width/gCanvas.width, this.frame.img.height/gCanvas.height];
+	}
 }
 
 /**
@@ -286,13 +291,13 @@ Entity.prototype.Draw = function()
 	if (!gl)
 	{
 		var tl = LocationGLToPix(this.Left(), this.Top());
-		var ctx = canvas.getContext("2d");
+		var ctx = gCanvas.getContext("2d");
 		var w = this.frame.img.width;
 		var h = this.frame.img.height;
 		if (this.scale)
 		{
-			w = this.scale[0] * canvas.width;
-			h = this.scale[1] * canvas.height;
+			w = this.scale[0] * gCanvas.width;
+			h = this.scale[1] * gCanvas.height;
 		}
 		ctx.drawImage(this.frame.img, tl[0], tl[1], w, h);
 		return;
@@ -320,7 +325,7 @@ Entity.prototype.Draw = function()
 	if (this.scale)
 		gl.uniform2f(uScale, this.scale[0],this.scale[1]);
 	else if (this.frame.img)
-		gl.uniform2f(uScale, this.frame.img.width/canvas.width, this.frame.img.height/canvas.height);
+		gl.uniform2f(uScale, this.frame.img.width/gCanvas.width, this.frame.img.height/gCanvas.height);
 
 	// Set vertex indices and then draw the rectangle
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gVerticesIndexBuffer);
@@ -350,9 +355,9 @@ function DrawScene()
 	var color = [0,0,0,1]
 	if (!gl)
 	{
-		var ctx = canvas.getContext("2d");
-		ctx.clearRect(0,0, canvas.width, canvas.height);
-		ctx.rect(0,0,canvas.width, canvas.height);
+		var ctx = gCanvas.getContext("2d");
+		ctx.clearRect(0,0, gCanvas.width, gCanvas.height);
+		ctx.rect(0,0,gCanvas.width, gCanvas.height);
 		for (var i = 0; i < color.length; ++i) color[i] = Math.round(color[i]*255);
 		ctx.fillStyle = "rgba("+color+")";
 		ctx.fill();
@@ -383,28 +388,35 @@ function main()
 	};
 	document.onkeyup = function(event) {gKeysPressed[event.keyCode] = false};
 
-	canvas = document.getElementById("glcanvas");
-	InitWebGL(canvas);      // Initialize the GL context
+	gCanvas = document.getElementById("glcanvas");
+
+	// Horrible things to get the canvas to scale to the size of the window
+	gCanvas.width = window.innerWidth;
+	gCanvas.height = window.innerHeight;
+	gCanvas.style.width = window.innerWidth + "px";
+	gCanvas.style.height = window.innerHeight + "px";
+
+	InitWebGL(gCanvas);      // Initialize the GL context
 	if (gl)
 	{
 		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 		gl.enable(gl.BLEND);
 		gl.clearColor(0, 0, 0, 1.0); // Set clear colour 
-		gl.viewport(0,0,canvas.width,canvas.height); // Set viewport (unnecessary?)
+		gl.viewport(0,0,gCanvas.width,gCanvas.height); // Set viewport (unnecessary?)
     		// Initialise the buffer objects
 		InitBuffers();
 	    	// Initialize the shaders
 		InitShaders();
 	}
 
-	canvas.addEventListener('mousemove', function(event) {
-		var rect = canvas.getBoundingClientRect();
+	gCanvas.addEventListener('mousemove', function(event) {
+		var rect = gCanvas.getBoundingClientRect();
 		gMouse[0] = event.clientX - rect.left;
 		gMouse[1] = event.clientY - rect.top;
 	});
 
-	canvas.addEventListener('mousedown', function(event) {
-		var rect = canvas.getBoundingClientRect();
+	gCanvas.addEventListener('mousedown', function(event) {
+		var rect = gCanvas.getBoundingClientRect();
 		var target = LocationPixToGL(event.clientX - rect.left, event.clientY - rect.top);
 		gPlayer.AddShot(target, "data/player_shot.gif");		
 	});
@@ -414,15 +426,13 @@ function main()
 
 Entity.prototype.AddShot = function(target, sprite)
 {
-	var shot = new Entity([this.position[0], this.position[1]], [this.velocity[0], this.velocity[1]]);
+	var shot = new Entity([this.position[0], this.position[1]], [this.velocity[0], this.velocity[1]], sprite);
 	shot.creator = this;
 	if (typeof(this.ignoreCollisionsEntity) === "undefined")
 	{
 			this.ignoreCollisionsEntity = {};
 	}
 	this.ignoreCollisionsEntity[shot] = true;
-	shot.frame = LoadTexture(sprite);
-	shot.scale = [shot.frame.img.width/canvas.width, shot.frame.img.height/canvas.height];
 	
 
 	var dist = 0;
@@ -444,8 +454,7 @@ Entity.prototype.AddShot = function(target, sprite)
 
 function StartGame()
 {
-	gPlayer = new Entity([0,0],[0,0]);
-	gPlayer.frame = LoadTexture("data/player.gif");
+	gPlayer = new Entity([0,0],[0,0], "data/player.gif");
 	gPlayer.speed = 0.4;
 	gPlayer.Step = function()
 	{
