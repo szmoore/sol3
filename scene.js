@@ -1,325 +1,152 @@
 /**
- * See game.js for boring details of what this is
+ * Sol III
  */
 
-/** The canvas **/
-var gCanvas;
-/** gl context **/
-var gl;
-	
+var g_game;
 
-/** GL Shader Program **/
-var shaderProgram;
+var g_identityCookie;
+var g_nicknameCookie;
+var g_maxLevelCookie;
+var g_adblockCookie;
+var g_touchBarCookie;
 
-/** GL Vertex Shader Attributes **/
-var aVertexPosition;
-var aTextureCoord;
-
-/** GL Vertex Shader Uniforms **/
-var uPosition;
-var uAspectRatio;
-var uColour;
-var uRotation;
-
-/** GL Buffers **/
-var gVerticesBuffer;
-var gVerticesTextureCoordBuffer;
-var gVerticesIndexBuffer;
-
-var gTextures = {};
-
-
-/**
- * Debug; display information on the page (for most things this is much nicer than Alt-Tabbing to and fro with Firebug)
- */
-function Debug(html, clear)
+function Handshake()
 {
-	var div = document.getElementById("debug");
-	if (div)
-	{
-		div.innerHTML = html;
-		if (html == "")
-			div.innerHTML="<font color=\"white\">...</font>"
-	}
-}
 
-
-function SpriteToRGBA(sprite1)
-{
-	var rgba1 = [];
-	for (var x = 0; x < sprite1.width; ++x)
+	var storedIdentity = GetCookie("identity");
+	if (g_identityCookie && storedIdentity != g_identityCookie)
 	{
-		rgba1[x] = [];
-		for (var y= 0; y < sprite1.height; ++y)
+		var cookieWarn = "COOKIE WARNING\n";
+		cookieWarn += "Enter a nickname to have your scores and level tracked by rabbitgame.net\n";
+		cookieWarn += "Leave blank to stay anonymous.\n";
+		if (window.screen.height > 600)
 		{
-			var index = (+x+ +y*sprite1.width)*4;
-			var pix = [0,0,0,0];
-			for (var i in pix)
-			{
-				pix[i] = sprite1.data[+index + +i];
-			}
-			rgba1[x][y] = pix;
+			cookieWarn += "Go to http://rabbitgame.net/cookies.html for more info.\n";
+			cookieWarn += "Go to http://rabbitgame.net/view.py to see statistics.\n";
+		}
+		
+		g_nicknameCookie = prompt(cookieWarn);
+		
+		if (g_nicknameCookie)
+		{
+			SetCookie("identity", g_identityCookie);
+			SetCookie("nickname", g_nicknameCookie);
+			SetCookie("maxLevel", 0);
+			g_maxLevelCookie = 0;
+			if (g_adblockCookie)
+				SetCookie("adblock", g_adblockCookie);
+
+			HttpGet("handshake.py")
 		}
 	}
-	return {width : sprite1.width, height : sprite1.height, rgba : rgba1};
-
-}
-/**
- * Sprite based collision
- */
-function SpriteCollision(offset, sprite1, sprite2)
-{
-	for (var x = 0; x < sprite1.width; ++x)
-	{
-		var xx = +x + +offset[0];
-		if (xx < 0 || xx >= sprite2.width) continue;
-		for (var y = 0; y < sprite1.height; ++y)
-		{
-			var yy = +y + +offset[1];
-			if (yy < 0 || yy >= sprite2.height) continue;
-			var pix1 = sprite1.rgba[x][y];
-			var pix2 = sprite2.rgba[xx][yy];
-			if (pix1[3] > 10 && pix2[3] > 10) return true;
-		}
-	}
-	return false;
-}
-
-function LocationGLToPix(x, y)
-{
-	var xx = Math.round((1+x)*gCanvas.width/2);
-	var yy = Math.round((1-y)*gCanvas.height/2);
-	return [xx,yy];
-}
-
-function LocationPixToGL(x, y)
-{
-	var xx = 2*(0.5 - x/gCanvas.width);
-	var yy = 2*(0.5 - y/gCanvas.width);
-	return [xx,yy];
-}
-
-/**
- * Initialize WebGL, returning the GL context or null if
- * WebGL isn't available or could not be initialized.
- */
-function InitWebGL() 
-{
-	gl = null;
-	try
-	{
-	    gl = gCanvas.getContext("experimental-webgl");
-	}
-	catch(e) {}
-  
-	// If we don't have a GL context, give up now
-	if (!gl)
-	{
-		alert("Unable to initialize WebGL. Your browser or graphics card may not support it.\n\nWill use canvas drawing instead (slower)");
-	}
-
-}
-
-/**
- * Load textures
- */
-function LoadTexture(src, lambda)
-{
-	if (src in gTextures)
-	{
-		if (lambda) {setTimeout(lambda, 500)}
-		return gTextures[src];
-	}
-	
-	var texture = (gl) ? gl.createTexture() : null;
-	var image = new Image();
-	gTextures[src] = {tex: texture, img: image, data : null};
-	if (lambda)
-		image.onload = function() {HandleTextureLoaded(gTextures[src]); lambda()};
 	else
-		image.onload = function() {HandleTextureLoaded(gTextures[src])};
+	{
+		g_identityCookie = GetCookie("identity");
+		g_nicknameCookie = GetCookie("nickname");
+		g_maxLevelCookie = GetCookie("maxLevel");
+		if (g_adblockCookie)
+			SetCookie("adblock", g_adblockCookie);
+		
+		// For our legacy users who won't have the nickname yet (hahaha I said legacy)
+		if (!g_nicknameCookie || g_nicknameCookie == "")
+		{
+			var cookieWarn = "COOKIE WARNING\n";
+			cookieWarn += "You ALREADY have an identity cookie\n";
+			cookieWarn += "But no human readable nickname. Enter a nickname please.\n";
+			g_nicknameCookie = prompt(cookieWarn);
+			if (g_nicknameCookie)
+				SetCookie("nickname", g_nicknameCookie);
+		}
+		// Because this could be zero and that is valid
+		if (typeof(g_maxLevelCookie) === "undefined" || g_maxLevelCookie == "")
+		{
+			g_maxLevelCookie = 0;
+			SetCookie("maxLevel", 0);
+		}
+	}
+	if (g_touchBarCookie)
+		SetCookie("touchBar", g_touchBarCookie);
+	g_touchBarCookie = GetCookie("touchBar");
 
-	image.src = src; 
-	return gTextures[src];
+	if (g_touchBarCookie === "yes")
+	{
+		console.log("Enable touch bar");
+		var touchBar = document.getElementById("touchBar");
+		if (typeof(touchBar) !== "undefined")
+		{
+			touchBar.style.display = "block";
+			InitPage();
+		}
+		else
+			console.log("Failed to enable button controls");
+	}
+	
+	console.log("You are: "+String(g_identityCookie));
+	console.log("Your nickname is: "+String(g_nicknameCookie));
+	console.log("Your maximum starting level is: "+String(g_maxLevelCookie));
 }
-
-
 
 /**
- * When a texture is loaded, do this
+ * The main function
  */
-function HandleTextureLoaded(texData)
+function main() 
 {
-	image = texData.img;
-	texture = texData.tex;
- 	if (gl && texture)
-		 gl.bindTexture(gl.TEXTURE_2D, texture);
-
-	if (gSpriteCollisions || ((image.width & (image.width - 1)) != 0 || (image.height & (image.height - 1)) != 0))
-	{
-		var canvas = document.createElement("canvas");
-		var w = image.width; var h = image.height;
-		--w; for (var i = 1; i < 32; i <<= 1) w = w | w >> i; ++w;
-		--h; for (var i = 1; i < 32; i <<= 1) h = h | h >> i; ++h;
-		canvas.width = w;
-		canvas.height = h;
-		var ctx = canvas.getContext("2d");
-		ctx.rect(0,0,w,h);
-		ctx.drawImage(image, w/2 - image.width/2, h/2 - image.height/2, image.width, image.height);
-		texData.data = SpriteToRGBA(ctx.getImageData(0,0,w,h));
-			
-		//ctx.font = "30px Courier";
-		//ctx.fillText("hello world\nhow are you", 0.1*w, h/2, 0.8*w);
-		/*
-		ctx.beginPath();
-		ctx.moveTo(0,0);
-		ctx.lineTo(w,0);
-		ctx.lineTo(w,h);
-		ctx.lineTo(0,h);
-		ctx.lineTo(0,0);
-		ctx.stroke();
-		*/
-		texData.img = canvas;
-	}
-
-	if (gl && texture)
-	{
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texData.img);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-		gl.generateMipmap(gl.TEXTURE_2D);
-		gl.bindTexture(gl.TEXTURE_2D, null);
-	}
-}
+	//Handshake();
+	var audio = document.getElementById("theme");
+	// Deal with browsers that can't play audiyyyy
+	audio = undefined;
 
 
+	var canvas = document.getElementById("glcanvas");
+	g_game = new Game(canvas, audio, document, true);
 
-/**
- * Initialises buffers that will be sent to the shaders
- */
-function InitBuffers()
-{
-	// Bind vertices (A rectangle)
-	gVerticesBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, gVerticesBuffer);
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, 1,1, -1,1]), gl.STATIC_DRAW);
-
-	// Bind vertex indices
-	gVerticesIndexBuffer  = gl.createBuffer();
-	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gVerticesIndexBuffer);
 	
-	var indices = [
-		0,1,2, 0,3,2 // indices of vertices of two triangles that make a square 
-	];
-	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+	var welcome_message = "Sol III";
 	
-	// Bind texture vertices
-	gVerticesTextureCoordBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, gVerticesTextureCoordBuffer);
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,1, 1,1, 1,0, 0,0]), gl.STATIC_DRAW);
-}
-//
-// InitShaders
-//
-// Initialize the shaders, so WebGL knows how to light our scene.
-//
-function InitShaders() 
-{
-	var fragmentShader = GetShader(gl, "shader-fs");
-	var vertexShader = GetShader(gl, "shader-vs");
-  
-	// Create the shader program
-	shaderProgram = gl.createProgram();
-	gl.attachShader(shaderProgram, vertexShader);
-	gl.attachShader(shaderProgram, fragmentShader);
-	gl.linkProgram(shaderProgram);
-  
-	// If creating the shader program failed, alert
-	if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) 
+	//christmas mode and romantic mode setting
+
+	
+	var adblock = GetCookie("adblock");
+	if (adblock === "yes")
 	{
-		alert("Unable to initialize the shader program.");
+		g_game.enableAdverts = false;
+		console.log("Ads are disabled.");
 	}
-  
-	gl.useProgram(shaderProgram);
- 
-	// Set attributes
-
-	// Textures
-	aTextureCoord = gl.getAttribLocation(shaderProgram, "aTextureCoord");
-	gl.enableVertexAttribArray(aTextureCoord);
-
-	// Vertices
-	aVertexPosition = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-	gl.enableVertexAttribArray(aVertexPosition); // Remember to do this. Or nothing will get drawn.
-
-	// Set uniforms
-	uPosition = gl.getUniformLocation(shaderProgram, "uPosition");
-	uAspectRatio = gl.getUniformLocation(shaderProgram, "uAspectRatio");
-	uScale = gl.getUniformLocation(shaderProgram, "uScale");
-	uColour = gl.getUniformLocation(shaderProgram, "uColour");
-	uRotation = gl.getUniformLocation(shaderProgram, "uRotation");
-	gl.uniform4f(uColour, 1,1,1,1);
-	// Set it
-	gl.uniform1f(uAspectRatio, gCanvas.width/gCanvas.height);
-	//gl.uniform1f(uAspectRatio, 1);
-}
-
-//
-// GetShader
-//
-// Loads a shader program by scouring the current document,
-// looking for a script with the specified ID.
-//
-function GetShader(gl, id) {
-  var shaderScript = document.getElementById(id);
-  
-  // Didn't find an element with the specified ID; abort.
-  
-  if (!shaderScript) {
-    return null;
-  }
-  
-  // Walk through the source element's children, building the
-  // shader source string.
-  
-  var theSource = "";
-  var currentChild = shaderScript.firstChild;
-  
-  while(currentChild) {
-    if (currentChild.nodeType == 3) {
-      theSource += currentChild.textContent;
-    }
-    
-    currentChild = currentChild.nextSibling;
-  }
-  
-  // Now figure out what type of shader script we have,
-  // based on its MIME type.
-  
-  var shader;
-  
-  if (shaderScript.type == "x-shader/x-fragment") {
-    shader = gl.createShader(gl.FRAGMENT_SHADER);
-  } else if (shaderScript.type == "x-shader/x-vertex") {
-    shader = gl.createShader(gl.VERTEX_SHADER);
-  } else {
-    return null;  // Unknown shader type
-  }
-  
-  // Send the source to the shader object
-  
-  gl.shaderSource(shader, theSource);
-  
-  // Compile the shader program
-  
-  gl.compileShader(shader);
-  
-  // See if it compiled successfully
-  
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    alert("An error occurred compiling the shaders: " + gl.getShaderInfoLog(shader));
-    return null;
-  }
-  
-  return shader;
+	else
+	{
+		g_game.enableAdverts = true;
+		console.log("Ads are enabled.");
+	}
+	
+	document.onkeydown = function(event) {g_game.KeyDown(event)};
+	document.onkeyup = function(event) {g_game.KeyUp(event)};
+	
+	
+	canvas.addEventListener("touchstart", function(event) {g_game.TouchDown(event.changedTouches[0])});
+	canvas.addEventListener("touchmove", function(event) {g_game.TouchDown(event.changedTouches[0])});
+	canvas.addEventListener("touchenter", function(event) {g_game.TouchDown(event.changedTouches[0])});
+	canvas.addEventListener("touchend", function(event) {g_game.TouchUp(event.changedTouches[0])});
+	canvas.addEventListener("touchleave", function(event) {g_game.TouchUp(event.changedTouches[0])});
+	canvas.addEventListener("mousedown", function(event) {g_game.MouseDown(event)});
+	canvas.addEventListener("mousemove", function(event) {g_game.MouseMove(event)});
+	canvas.addEventListener("mouseup", function(event) {g_game.MouseUp(event)});
+	
+	var startLevel = 1;
+	if (g_maxLevelCookie && g_maxLevelCookie >= 2)
+	{
+		startLevel = prompt("Start at level (1-"+String(g_maxLevelCookie)+")?", String(g_maxLevelCookie));
+		if (isNaN(startLevel))
+			startLevel = 0;
+		startLevel = Math.max(startLevel,0);
+		startLevel = Math.min(startLevel, g_maxLevelCookie);
+		// It's not like they'll edit their cookies or anything. 
+		//   Right?
+	}	
+	g_game.splashPerformance = (new Date()).getTime();
+	var s = function(startLevel) {
+		this.AddTimeout("Start", this.Start.bind(this, startLevel),2000)
+		this.splashPerformance = (new Date()).getTime() - this.splashPerformance;
+		//alert("splash took " + String(this.splashPerformance)+"ms");
+	}.bind(g_game, startLevel);
+	g_game.canvas.SplashScreen("data/sol3.gif", welcome_message, [0.9,1.0,0.9,1],s);
 }
