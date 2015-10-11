@@ -3,8 +3,8 @@ function InitPage()
 	// Browsers on phones do *wierd* things with screen.width, innerWidth, screen.availWidth etc
 	var screenWidth = Math.min(window.innerWidth, window.screen.width);
 	var screenHeight = Math.min(window.innerHeight, window.screen.height);
-	var width = Math.min(0.9*screenWidth, 640);
-	var height = Math.min(screenHeight-64, 800);
+	var width = Math.min(0.9*screenWidth, 2000);
+	var height = Math.min(screenHeight-64, 1000);
 
 	if (typeof(g_game) !== "undefined" && typeof(g_game.canvas) != "undefined")
 	{
@@ -14,7 +14,7 @@ function InitPage()
 
 		
 	var touchBar = document.getElementById("touchBar");
-	if (typeof(touchBar) !== "undefined" && touchBar.style.display === "block")
+	if (touchBar && typeof(touchBar) !== "undefined" && touchBar.style.display === "block")
 	{
 		height -= 96;
 		/*
@@ -34,8 +34,8 @@ function InitPage()
 		*/
 	}
 	
-	var middlePanel = document.getElementById("middlePanel");
-	middlePanel.style.width = width;
+	//var middlePanel = document.getElementById("middlePanel");
+	//middlePanel.style.width = width;
 	
 	var canvas = document.getElementById("glcanvas");
 	canvas.width = width;

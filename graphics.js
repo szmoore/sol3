@@ -96,6 +96,13 @@ Canvas.prototype.LocationGLToPix = function(x, y)
 	return [xx,yy];
 }
 
+Canvas.prototype.LocationPixToGL = function(x, y)
+{
+	var xx = -1+(2*x/this.width);
+	var yy = 1-(2*y/this.height);
+	return [xx,yy]
+}
+
 Canvas.prototype.Text = function(text)
 {
 	var fontSize = 50 / (1 +Math.round(text.length/40));

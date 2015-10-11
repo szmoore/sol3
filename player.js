@@ -9,9 +9,13 @@ function Player(position, velocity, acceleration, canvas, spritePath)
 	this.stomp = 0.2;
 	this.lives = 0;
 	this.name = "Player";
+	this.ignoreCollisions["PlayerShot"] = true;
 	this.spawn = [];
+	this.health = 100;
+	this.canShoot = true;
 	for (var i = 0; i < position.length; ++i)
 		this.spawn[i] = position[i];
+	this.scale = [72/canvas.width,72/canvas.height];
 }
 Player.prototype = Object.create(Entity.prototype);
 Player.prototype.constructor = Player;
@@ -45,7 +49,7 @@ Player.prototype.HandleKeys = function(keys)
 Player.prototype.Step = function(game)
 {
 	Entity.prototype.Step.call(this,game);
-	this.angle = Math.PI/2;
+	this.angle = Math.atan2( -game.mouseY + this.position[1], game.mouseX - this.position[0]);
 	if (this.shield && !this.shield.alive)
 	{
 		delete this.shield;
@@ -203,41 +207,17 @@ Player.prototype.DeathScene = function(game, onload)
 	var text = "You died of mysterious causes.";
 	var colour = [1,1,1,1];
 	console.log(this.deathType);
+	Debug("Dying");
 	switch (this.deathType)
 	{
-		case "Box":
-			image = "data/rabbit/drawing2.svg";
-			text = "SQUISH!";
-			game.Message("You got Squished!");
-			colour = [1,0,0,0.8];
-			break;
-		case "Fox":
-			image = "data/fox/drawing1.svg";
-			text = "CHOMP!";
-			game.Message("You got Eaten!");
-			colour = [1,0,0,0.8];
-			break;
-		case "Ox":
-			image = "data/ox/drawing1.svg";
-			text = "STAB!";
-			game.Message("You got Stabbed!");
-			colour = [1,0,0,0.8];
-			break;
-		case "Wolf":
-			image = "data/wolf/drawing1.svg";
-			text = "MAUL!";
-			game.Message("You got Mauled!");
-			colour = [1,0,0,0.8];
-			break;
-		case "Rox":
-			image = "data/rox/drawing1.svg";
-			text = "SWOOP!";
-			game.Message("You got Swooped!");
-			colour = [1,0,0,0.8];
+		default:
+			image = "data/gameover.svg";
+			text = "You were killed";
+			colour = [1,1,1,1];
 			break;
 	}
 //	if (g_identityCookie)
-	this.PostStats("Killed "+this.deathType,game)
+	//this.PostStats("Killed "+this.deathType,game)
 		
 	game.canvas.SplashScreen(image, text, colour, onload);
 }
@@ -315,42 +295,31 @@ Player.prototype.GainLife = function(life, game)
 	//	this.PostStats("Gain life",game)
 }
 
-
-
-function Hat(position, velocity, acceleration, canvas, game)
+function PlayerShot(position, velocity, acceleration, canvas, game)
 {
 	Entity.call(this, position, velocity, acceleration, canvas, "");
-	this.frame = canvas.LoadTexture("data/hats/hat1_big.gif");
-	this.name = "Hat";
-	this.ignoreCollisions["Roof"] = true;
-	this.ignoreCollisions["Cloud"] = true;
-	if (game)
-		game.Message("Get the hat!");
+	this.frame = canvas.LoadTexture("data/player/shot.png");
+	this.name = "PlayerShot";
+	this.angle = Math.atan2(velocity[1], velocity[0]);
+	this.ignoreCollisions["Player"] = true;
+	this.ignoreCollisions[this.GetName()] = true;
 }
-Hat.prototype = Object.create(Entity.prototype);
-Hat.prototype.constructor = Hat;
-Hat.prototype.CollisionActions = {};
 
+PlayerShot.prototype = Object.create(Entity.prototype);
+PlayerShot.prototype.constructor = PlayerShot;
+PlayerShot.prototype.CollisionActions = {};
 
-Hat.prototype.CollisionActions["Humphrey"] = function(other, instigator, game)
+PlayerShot.prototype.Step = function(game)
 {
-	other.GainLife(this, game);
-	game.UpdateDOM(other);
-	this.Die(other.GetName(), other, game);
+	Entity.prototype.Step.call(this,game);
+	this.angle = Math.atan2(-this.velocity[1], this.velocity[0]);
+	//Debug("Shot at angle " + this,angle);
 }
 
-Hat.prototype.CollisionActions["Hat"] = function(other,instigator, game)
-{
-	if (instigator)
-	{
-		this.position[0] = other.position[0] - 1.2*this.Width();
-	}
-}
-
-Hat.prototype.HandleCollision = function(other, instigator, game)
+PlayerShot.prototype.HandleCollision = function(other, instigator, game)
 {
 	Entity.prototype.HandleCollision.call(this, other, instigator, game);
-	if (other.GetName() === "Floor")
+	if (other.GetName() != "Player" && other.GetName() != this.GetName())
 		this.Die(this.GetName(), this, game);
 }
 

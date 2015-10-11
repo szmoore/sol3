@@ -64,7 +64,8 @@ Entity.prototype.UpdateFrames = function()
 	if (!this.frameBase)
 		return;
 	
-	this.frames = this.frameBase["main"];
+	if (!this.frames)
+		this.frames = this.frameBase["main"];
 }
 
 /**
@@ -244,7 +245,9 @@ Entity.prototype.Collision = function(game)
 		
 		if (!other || other === this 
 			|| (this.ignoreCollisions && 
-				this.ignoreCollisions[other.GetName()]))
+				this.ignoreCollisions[other.GetName()])
+			|| (other.ignoreCollisions &&
+				other.ignoreCollisions[this.GetName()]))
 		{ 
 			continue;
 		}
@@ -277,6 +280,8 @@ Entity.prototype.Collides = function(other)
 		offset = [tl2[0]-tl1[0], tl2[1]-tl1[1]];
 		collides &= SpriteCollision(offset, this.sprite.data, other.sprite.data);
 	}
+	if (collides)
+		Debug(this.GetName()+" collides with " + other.GetName());
 	return collides;
 }
 
@@ -417,7 +422,14 @@ Entity.prototype.Draw = function(canvas)
 			}
 			ctx.translate(tl[0]+w/2, tl[1]+h/2);
 			ctx.rotate(this.angle);
-			ctx.drawImage(this.frame.img, -w/2,-h/2, w, h);
+			try
+			{
+				ctx.drawImage(this.frame.img, -w/2,-h/2, w, h);
+			}
+			catch (e)
+			{
+				console.error("Could not draw image with src: " + this.frame.img.src);
+			}
 			ctx.rotate(-this.angle);
 			ctx.translate(-tl[0]-w/2, -tl[1]-h/2);
 			return;
@@ -457,9 +469,9 @@ Entity.prototype.Draw = function(canvas)
 Entity.prototype.LoadSprites = function(canvas, imageDir)
 {
 	this.frameBase = {
-		"main" : [canvas.LoadTexture(imageDir+"/main.gif")],
-		"hit" : [canvas.LoadTexture(imageDir+"/hit.gif")],
-		"destroy" : [canvas.LoadTexture(imageDir+"/destroy.gif")],
+		"main" : [canvas.LoadTexture(imageDir+"/main.png")],
+		"hit" : [canvas.LoadTexture(imageDir+"/hit.png")],
+		"destroy" : [canvas.LoadTexture(imageDir+"/destroy.png")],
 		
 	};
 }
@@ -559,16 +571,36 @@ function SFXEntity(parent, life, images, canvas, offset)
 }
 SFXEntity.prototype = Object.create(Entity.prototype);
 SFXEntity.prototype.constructor = SFXEntity;
-SFXEntity.prototype.Step = function(game) {
-	if (this.life-- <= 0)
+SFXEntity.prototype.Step = function(game) 
+{
+	if (this.life == -1)
+	{
+		if (this.frameNumber >= this.frames.length)
+		{
+			this.Die(this.GetName(),this,game);
+			return;
+		}
+	}
+	else if (this.life-- <= 0)
 	{
 		this.Die(this.GetName(),this,game);
 		return;
 	}
 	
-	for (var i = 0; i < this.position.length; ++i)
-		this.position[i] = this.parent.position[i]+this.offset[i];
+	if (typeof(this.offset) !== "undefined")
+	{
+		for (var i = 0; i < this.position.length; ++i)
+			this.position[i] = this.parent.position[i]+this.offset[i];
+	}
 		
 	Entity.prototype.Step.call(this,game);
 	
 }
+
+function Explosion(parent, canvas, offset)
+{
+	SFXEntity.call(this,parent,-1,["data/Explosion/1.png","data/Explosion/2.png","data/Explosion/3.png",
+		"data/Explosion/4.png", "data/Explosion/5.png", "data/Explosion/6.png", "data/Explosion/7.png","data/Explosion/7.png","data/Explosion/7.png","data/Explosion/7.png"], canvas, offset);
+	this.frameRate = 20;
+}
+Explosion.prototype = Object.create(SFXEntity.prototype);

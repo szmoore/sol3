@@ -144,7 +144,7 @@ function main()
 	}	
 	g_game.splashPerformance = (new Date()).getTime();
 	var s = function(startLevel) {
-		this.AddTimeout("Start", this.Start.bind(this, startLevel),2000)
+		this.AddTimeout("Start", this.Start.bind(this, startLevel),500)
 		this.splashPerformance = (new Date()).getTime() - this.splashPerformance;
 		//alert("splash took " + String(this.splashPerformance)+"ms");
 	}.bind(g_game, startLevel);

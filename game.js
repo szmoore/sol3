@@ -5,7 +5,15 @@
  
 function Debug(message)
 {
-	console.log(message);
+	//console.log(message);
+	try
+	{
+		document.getElementById("debug").innerHTML = message;
+	}
+	catch (err)
+	{
+		
+	}
 }
  
 /**
@@ -102,7 +110,8 @@ function Game(canvas, audio, document, multiplayer)
 	
 	this.timeouts = {}; // Timeouts
 	
-	
+	this.mouseX = 0;
+	this.mouseY = 0;
 	
 	this.running = false;
 	this.runTime = 0;
@@ -189,7 +198,7 @@ Game.prototype.Resume = function()
 		
 		if (typeof(this.timeouts["AddCloud"]) === "undefined")
 		{
-			this.AddTimeout("AddCloud", function() {this.AddCloud()}.bind(this), this.stepRate*(1000 + Math.random()*2000));	
+			//this.AddTimeout("AddCloud", function() {this.AddCloud()}.bind(this), this.stepRate*(1000 + Math.random()*2000));	
 			
 		}
 		
@@ -259,32 +268,17 @@ Game.prototype.SetLevel = function(level)
 	this.deathCount = {};
 
 	// Add the walls
-	this.AddEntity(new Wall({min: [-Infinity,-Infinity], max:[Infinity, -1]}, "Floor")); // bottom
-	this.AddEntity(new Wall({min: [-Infinity,0.8], max:[Infinity,Infinity]}, "Roof")); // top
-	this.AddEntity(new Wall({min: [-Infinity,-Infinity], max:[-1, Infinity]})); // left 
-	this.AddEntity(new Wall({min: [1,-Infinity], max:[Infinity, Infinity]})); // right
+	this.AddEntity(new Wall({min: [-Infinity,-Infinity], max:[Infinity, -0.7]}, "Floor")); // bottom
+	this.AddEntity(new Wall({min: [-Infinity,0.7], max:[Infinity,Infinity]}, "Roof")); // top
+	this.AddEntity(new Wall({min: [-Infinity,-Infinity], max:[-0.7, Infinity]})); // left 
+	this.AddEntity(new Wall({min: [0.7,-Infinity], max:[Infinity, Infinity]})); // right
 	
 	// Add the player
 	this.player = new Player([0,0],[0,0],this.gravity, this.canvas, "data/player");
 	this.AddEntity(this.player);
 	
-	if (this.multiplayer && this.playerCount && this.playerCount > 1)
-	{
-		this.multiplayer = []
-		this.multiplayer[this.playerID] = this.player;
-		this.player.playerID = this.playerID;
-		
-		this.player.position[0] = -(this.player.Width()/2)*this.playerCount + this.player.Width()*this.playerID;
-		
-		for (var i = 0; i < this.playerCount; ++i)
-		{
-			if (i == this.playerID) continue;
-			var x = -(this.player.Width()/2)*this.playerCount + this.player.Width()*i;
-			this.multiplayer[i] = new Player([x, 0], [0,0], this.gravity, this.canvas, "data/rabbit");
-			this.multiplayer[i].playerID = i;
-			this.AddEntity(this.multiplayer[i]);
-		}
-	}
+	//var enemy = new PurpleEater([0.5,0.5],[0,0],this.gravity, this.canvas);
+	//this.AddEntity(enemy);
 	
 
 	/**  level specific code goes below here **/	
@@ -297,23 +291,7 @@ Game.prototype.SetLevel = function(level)
 /** Get background draw colour (in OpenGL RGBA) **/
 Game.prototype.GetColour = function()
 {
-	if (this.romanticMode === true)
-		return [1,0.9,0.9,1];
-	else if (this.xmasMode === true && this.level === 1)
-		return [0.9,0.9,1,1];
-	else if (this.level == 0)
-		return [0.9,1,0.9,1];
-	else if (this.level == 1)
-		return [0.9,0.9,1,1];
-	else if (this.level == 2)
-		return [0.8,0.6,0.6,1];
-	else if (this.level == 3)
-		return [1.0,0.9,0.8,1];
-	else if (this.level == 4)
-		return [1.0,0.7,1.0,1];
-	else if (this.level == 5)
-		return [0.6,0.5,0.5,1];
-	return [1,1,1,1];
+	return [0,0,0,1];
 }
 
 /** 
@@ -383,6 +361,7 @@ Game.prototype.NextLevel = function(skipAd)
 Game.prototype.AddEnemy = function()
 {
 
+	this.AddEntity(new GreyShooter([Math.random()*2-1,Math.random()*2-1],[0,0],this.gravity, this.canvas));
 	this.AddTimeout("AddEnemy", function() {this.AddEnemy()}.bind(this), this.stepRate*300/Math.min(Math.pow(this.level,0.5),1));
 	if (!this.running)
 		this.timeouts["AddEnemy"].Pause();
@@ -488,6 +467,20 @@ Game.prototype.TouchDown = function(event)
 	{
 		this.Resume();
 	}
+	
+	if (this.player.canShoot)
+	{
+		var v = 1;
+		var theta = Math.atan2(-this.mouseY + this.player.position[1], this.mouseX - this.player.position[0]);
+		var vx = v * Math.cos(theta);
+		var vy = -v * Math.sin(theta);
+		Debug("Shot fired");
+		this.AddEntity(new PlayerShot([this.player.position[0],this.player.position[1]], [vx,vy], [0,0], this.canvas, this));
+		this.player.canShoot = false;
+		this.AddTimeout("canShoot", function() {this.player.canShoot = true;}.bind(this), 100);
+	}
+	return;
+	
 	this.keyState = [];
 	if (!this.player || !this.canvas)
 		return;
@@ -521,7 +514,7 @@ Game.prototype.TouchDown = function(event)
 Game.prototype.TouchUp = function(event)
 {
 	//this.Message("TouchUp at "+String([event.clientX, event.clientY]));
-	
+	return;
 	for (var k in this.keyState)
 	{
 		this.KeyUp({keyCode : k});
@@ -558,6 +551,10 @@ Game.prototype.MouseMove = function(event)
 {
 	if (this.mouseDown)
 		this.TouchDown(event);
+	this.mouse = this.canvas.LocationPixToGL(event.pageX, event.pageY);
+	this.mouseX = this.mouse[0];
+	this.mouseY = this.mouse[1];
+	//Debug("Mouse at " +this.mouseX+","+this.mouseY + "Player at "+this.player.position[0]+","+this.player.position[1]);
 }
 
 /**
@@ -567,7 +564,7 @@ Game.prototype.MouseMove = function(event)
 Game.prototype.ClearStepAndDraw = function()
 {
 
-	Debug("Step");
+	//Debug("Step");
 	this.lastStepTime = this.stepTime;
 	this.stepTime = (new Date()).getTime();
 	if (!this.lastStepTime)
@@ -584,6 +581,16 @@ Game.prototype.ClearStepAndDraw = function()
 	//  to give a performance increase
 	this.canvas.Clear(this.GetColour());
 	this.canvas.DrawBackground();
+	
+	this.canvas.ctx.beginPath();
+	this.canvas.ctx.strokeStyle = "#FF0000";
+	this.canvas.ctx.moveTo(-0.7,0.7);
+	this.canvas.ctx.lineTo(-0.7,-0.7);
+	this.canvas.ctx.lineTo(0.7,-0.7);
+	this.canvas.ctx.lineTo(0.7,0.7);
+	this.canvas.ctx.lineTo(-0.7,0.7);
+	this.canvas.ctx.stroke();
+	
 		
 	if (this.message)
 	{
@@ -610,8 +617,8 @@ Game.prototype.ClearStepAndDraw = function()
 			else
 			{
 				this.entities[i].Step(this);
-				if (this.entities[i].angle != 0)
-					console.log("Angle is " + String(this.entities[i].angle));
+				//if (this.entities[i].angle != 0)
+				//	console.log("Angle is " + String(this.entities[i].angle));
 			}
 			this.entities[i].Draw(this.canvas);
 			if (!this.entities[i].alive)
@@ -664,7 +671,8 @@ Game.prototype.Draw = function()
 		this.canvas.Text(this.message);
 		//this.canvas.SplashScreen(this.overlay.image, this.overlay.splashText, [0,0,0,0.1]);
 	}
-		
+	
+
 	/*
 	for (var i = 0; i < this.entities.length; ++i)
 	{
